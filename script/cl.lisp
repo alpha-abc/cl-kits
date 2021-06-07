@@ -169,6 +169,7 @@ md5 'abc'"
                                    (aref str (ldb '(4 . 0) p)))))
                        (sb-md5:md5sum-string (nth 0 args))))))
 
+
 (defun json-pretty (&rest args)
   "对输入的json字符串格式化, 美化输出
 
@@ -177,7 +178,7 @@ json-pretty $json
 
 example:
 json-pretty '[1,2]'"
-  (format nil "~a~%"
+  (format nil "~A~%"
           (with-output-to-string (s)
             (yason:encode
              (yason:parse (nth 0 args))
