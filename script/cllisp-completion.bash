@@ -24,7 +24,7 @@ function __cllisp_main() {
 	0) # 不处理根命令
 		;;
 	1)
-    local cmd_opts="timestamp2date date2timestamp md5"
+    local cmd_opts="timestamp2date date2timestamp md5 json-pretty"
 
     COMPREPLY=( $(compgen -W "${cmd_opts}" -- ${cur}) )
 		;;
