@@ -29,11 +29,11 @@
                  (apply sym (cdr argv))
                ;; 优先匹配函数未定义错误
                (undefined-function (uf)
-                 (format nil "未知命令: ~A~%~%~A~%" (nth 0 argv) (help nil)))
+                 (format nil "~A:~%~A~%~%~A~%" (color-text 31 "未知命令") (color-text 31 (nth 0 argv)) (help nil)))
                (error (err)
-                 (format nil "ERROR: ~A~%~%~A~%" err (help (list sym))))
+                 (format nil "~A:~%~A~%~%~A~%" (color-text 31 "ERROR") (color-text 31 err) (help (list sym))))
                (condition (c)
-                 (format nil "CONDITION: ~A~%~%~%~A~%" c (help (list sym)))))))))
+                 (format nil "~A:~%~A~%~%~%~A~%" (color-text 31 "CONDITION") (color-text 31 c) (help (list sym)))))))))
 
 
 (defun color-text (n text)
@@ -51,7 +51,7 @@
 
 
 (defun help (cmd-sym-lst)
-  (format nil "-=-=-=-=-
+  (format nil "~A~%
 cl.lisp 工具箱, 依赖sbcl以及quicklisp
 
 用法:
@@ -60,6 +60,7 @@ cl.lisp 工具箱, 依赖sbcl以及quicklisp
 命令列表:
 ~{~%~A~%~}
 "
+          (color-text 34 "-=-=-=-=-=-=-=-=-")
           (color-text 31 "cl.lisp")
           (color-text 33 "<command>")
           (color-text 32 "[arguments]")
