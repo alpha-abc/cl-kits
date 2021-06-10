@@ -4,8 +4,8 @@
 (defpackage :cl-script
   (:use :cl :cl-user)
   (:export
-   :timestamp2date
-   :date2timestamp
+   :timestamp-to-date
+   :date-to-timestamp
    :md5
    :json-pretty
    :base64-to-string
@@ -89,14 +89,14 @@ cl.lisp 工具箱, 依赖sbcl以及quicklisp
       resp-lst)))
 
 
-(defun timestamp2date (&rest args)
+(defun timestamp-to-date (&rest args)
   "将时间戳(单位:秒, 默认epoch: 1970)转换成易读时间格式
 
 usage:
-timestamp2date $timestamp [$epoch]
+timestamp-to-date $timestamp [$epoch]
 
 example:
-timestamp2date 1607746332 1970"
+timestamp-to-date 1607746332 1970"
   (multiple-value-bind (second minute hour date month year day-of-week dst-p timezone)
       (decode-universal-time
        (+
@@ -122,14 +122,14 @@ timestamp2date 1607746332 1970"
             (- timezone))))
 
 
-(defun date2timestamp (&rest args)
+(defun date-to-timestamp (&rest args)
   "将日期(YYYY-MM-DD hh24:mm:ss)转换成时间戳(单位:秒, 默认epoch: 1900)
 
 useage:
-date2timestamp $date [$epoch]
+date-to-timestamp $date [$epoch]
 
 example:
-date2timestamp '2020-12-12 12:12:12' 1970"
+date-to-timestamp '2020-12-12 12:12:12' 1970"
   (let ((resp (cl-ppcre:split "(-| +|:)" (nth 0 args))))
     (format nil
             "~a~%"
