@@ -8,6 +8,8 @@
    :date2timestamp
    :md5
    :json-pretty
+   :base64-to-string
+   :string-to-base64
    :test))
 
 
@@ -17,8 +19,7 @@
 (load "~/quicklisp/setup.lisp")
 
 ;; 依赖的第三方库
-(ql:quickload :cl-ppcre :silent :prompt)
-(ql:quickload :yason :silent :prompt)
+(ql:quickload '(:cl-ppcre :yason :cl-base64) :silent :prompt)
 
 (defun main(argv)
   "脚本入口函数"
@@ -183,6 +184,31 @@ json-pretty '[1,2]'"
             (yason:encode
              (yason:parse (nth 0 args))
              (yason:make-json-output-stream s :indent 4)))))
+
+
+(defun base64-to-string(&rest args)
+  "对输入的base64字符串解码
+
+usage:
+base64-to-string $str
+
+example:
+base64-to-string 'MTI='"
+  (format nil "~A~%"
+          (cl-base64:base64-string-to-string (nth 0 args))))
+
+
+(defun string-to-base64(&rest args)
+  "对输入的字符串base64化
+
+usage:
+string-to-base64 $base64
+
+example:
+string-to-base64 '12'"
+  (format nil "~A~%"
+          (cl-base64:string-to-base64-string (nth 0 args))))
+
 
 
 (defun test (&rest args)
