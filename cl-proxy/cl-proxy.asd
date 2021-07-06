@@ -9,7 +9,12 @@
                "bordeaux-threads")
   :components ((:module "src"
                 :components
-                ((:file "main"))))
+                ((:file "package")
+                 (:file "kit" :depends-on ("package"))
+                 (:file "socks5" :depends-on ("package"))
+                 (:file "local-server" :depends-on ("package"))
+                 (:file "proxy-server" :depends-on ("package"))
+                 )))
   :description ""
   :in-order-to ((test-op (test-op "cl-proxy/tests"))))
 

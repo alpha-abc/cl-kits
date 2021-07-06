@@ -1,18 +1,6 @@
-(defpackage cl-proxy
-  (:use :cl))
 (in-package :cl-proxy)
 
-;; blah blah blah.
-(defun hw ()
-  "hello world"
-  (format t "hello world~%"))
-
 (defconstant +SOCKS5-VER+ #X05)
-
-
-(defun force-format (destination control-string &rest format-arguments)
-  (apply #'format destination control-string format-arguments)
-  (finish-output nil))
 
 
 (defun socks5 (stream)
@@ -39,14 +27,8 @@ return
       (setf host-bs h)
       (setf port-bs p))
 
-    
-    (force-format t "~A : ~A > ~A ~A~%"
-                  (flexi-streams:octets-to-string uname-bs)
-                  (flexi-streams:octets-to-string passwd-bs)
-                  (flexi-streams:octets-to-string host-bs)
-                  (bits-arr->unumber port-bs)
-                  )
-    (force-format t "go on .......")))
+    (values uname-bs passwd-bs host-bs port-bs)))
+
 
 (defun socks5-method (stream)
   "认证方法协商, 目前只支持 [USERNAME/PASSWORD]"
@@ -72,6 +54,7 @@ return
       (force-output stream)
       ;; 中断流程
       (when (not method) (error "no acceptable methods")))))
+
 
 (defun socks5-get-user (stream)
   "获取账户与密码信息
@@ -113,10 +96,13 @@ return
         
         (values uname-bs passwd-bs)))))
 
+
 (defun socks5-get-addr (stream)
   "获取需要代理的目的地址
 return
-  value (host-byte port-byte)"
+  value (host-byte port-byte)
+
+其中port-byte一共由2字节表示(2 byte / 16 bit)(大端)"
 
   (let ((buffer nil)
         (size 0)
@@ -181,75 +167,3 @@ return
                     stream)
     (force-output stream)
     (values host-bs port-bs)))
-
-
-
-(defvar *server-thread* nil)
-
-(defun start-server (&optional (host #(0 0 0 0)) (port 1082))
-  "启动本地TCP服务"
-
-  (multiple-value-bind (thread)
-      (usocket:socket-server host
-                             port
-                             #'tcp-handler
-                             nil
-                             :in-new-thread :t
-                             :protocol :stream
-                             :reuse-address t
-                             :multi-threading t
-                             :element-type '(unsigned-byte 8))
-    (setf *server-thread* thread)))
-
-(defun stop-server ()
-  "停止本机TCP服务"
-
-  (block nil
-      (when (or (not *server-thread*)
-                (not (bt:thread-alive-p *server-thread*)))
-        (return))
-    (bt:destroy-thread *server-thread*)
-    (setf *server-thread* nil)))
-
-(defun re-start-server()
-  (stop-server)
-  (start-server))
-
-
-(defun tcp-handler (stream)
-  "处理每一个tcp连接"
-  (let ((socks5-info-arr (socks5 stream)))
-    ))
-
-
-#+test
-(let ((k 1))
-  (case k
-    (1 "A")
-    (2 "B")
-    (t "C")
-    ))
-
-
-#+TEST
-(let ((i 0))
-  (setf (ldb (byte 8 0) i) 187)
-  (setf (ldb (byte 8 8) i) 1)
-  i)
-
-(defun bits-arr->unumber (arr &key (bit-len 8) (start 0) (end (length arr)))
-  "将array转换成无符号数字(大端模式/big endian)
-params:
-  bit-len: 每一个元素由<bit-len>位表示
-  start: 左闭
-  end: 右开
-
-return:
-  无符号数字"
-  (let ((n 0))
-    (loop for byte-idx from (1- end) downto start
-          do
-             (setf (ldb (byte bit-len (* bit-len (- (1- end) byte-idx))) n)
-                   (aref arr byte-idx)))
-    n))
-
