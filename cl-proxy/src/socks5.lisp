@@ -17,8 +17,6 @@ return
         (port-bs nil))
     (socks5-method stream)
 
-    (force-format t "~A~%" "方法协商完成1")
-
     (multiple-value-bind (u p) (socks5-get-user stream)
       (setf uname-bs u)
       (setf passwd-bs p))
@@ -65,7 +63,6 @@ return
         (size 0)
         (ulen 0))
     (setf size (read-sequence buffer stream))
-    (force-format t "size info ~A~%" size)
     (when (/= 2 size) (error "read VER, ULEN size error"))
     (when (/= #X01 (aref buffer 0)) (error "socks subversion[username/password] error"))
     (setf ulen (aref buffer 1))

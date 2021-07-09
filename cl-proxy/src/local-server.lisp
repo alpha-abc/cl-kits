@@ -8,11 +8,10 @@
 (defun start-local-server (&optional (host #(0 0 0 0)) (port 1082))
   "启动[local]TCP服务"
   (multiple-value-bind (thread)
-      (usocket:socket-server host
-                             port
-                             #'local-tcp-handler
+      (usocket:socket-server host port
+                             'local-tcp-handler
                              nil
-                             :in-new-thread :t
+                             :in-new-thread t
                              :protocol :stream
                              :reuse-address t
                              :multi-threading t
@@ -32,20 +31,46 @@
 
 (defun restart-local-server()
   "重启[local]TCP服务"
-  (local-stop-server)
-  (local-start-server))
+  (stop-local-server)
+  (start-local-server))
 
 
 (defun local-tcp-handler (stream)
   "处理每一个tcp连接"
-  (multiple-value-bind (uname-bs passwd-bs host-bs port-bs)
-      (socks5 stream)
 
-    ;; https://dataswamp.org/~solene/2016-09-26-21.html
-    (usocket:with-client-socket (socket stream '(127 0 0 1) 10020)
-      (let ((ssl-stream (cl+ssl:make-ssl-client-stream stream :unwrap-stream-p t)))
-        (local-auth ssl-stream uname-bs passwd-bs host-bs port-bs)))
-    ))
+  (handler-case
+      (multiple-value-bind (uname-bs passwd-bs target-host-bs target-port-bs)
+          ;; socks5协议解析
+          (socks5 stream)
+
+        ;; https://dataswamp.org/~solene/2016-09-26-21.html
+        (usocket:with-client-socket (socket r-stream
+                                            #(127 0 0 1) 10020 ;; 代理服务器地址以及端口信息
+                                            :element-type '(unsigned-byte 8)
+                                            :protocol :stream)
+
+          (let ((ssl-stream (cl+ssl:make-ssl-client-stream
+                             r-stream
+                             :verify nil
+                             :unwrap-stream-p t)))
+            ;; 与代理服务器协商认证
+            (local-auth ssl-stream uname-bs passwd-bs target-host-bs target-port-bs)
+
+            (force-format t "COPY TEST BEGIN ~%")
+
+            (let ((t1 (bt:make-thread
+                       #'(lambda ()
+                           (io-byte-copy stream ssl-stream))
+                       :name "LOCAL->PROXY"))
+                  (t2 (bt:make-thread
+                       #'(lambda ()
+                           (io-byte-copy ssl-stream stream))
+                       :name "PROXY->LOCAL")))
+
+              (bt:join-thread t1)
+              (bt:join-thread t2)))))
+    (condition (c)
+      nil)))
 
 
 (defun local-auth (ssl-stream uname-bs passwd-bs host-bs port-bs)
@@ -55,17 +80,27 @@ passwd-bs: 用2字节表示长度
 host-bs: 用2字节表示长度
 port-bs: 用2字节表示长度
 |2bytes|2bytes|2bytes|2bytes|data|"
-  (let* ((ulen (length uname-bs))
-         (plen (length passwd-bs))
-         (host-len (length host-bs))
-         (port-len (length port-bs))
 
-         (data (make-array (+ 8 ulen plen host-len port-len) :element-type '(unsigned-byte 8))))
+  (let ((data (concatenate 'vector
+                           (unumber->bits-array (length uname-bs) :array-length 2)
+                           (unumber->bits-array (length passwd-bs) :array-length 2)
+                           (unumber->bits-array (length host-bs) :array-length 2)
+                           (unumber->bits-array (length port-bs) :array-length 2)
+                           uname-bs passwd-bs host-bs port-bs)))
+    (write-sequence data ssl-stream)
+    (force-output ssl-stream))
 
-    (vector-push )
-    
-    )
-  )
+  ;; 认证结果用1字节表示, #B00 - 失败(对端会关闭连接), 其他 - 成功
+  (let ((buffer (make-array 1 :element-type '(unsigned-byte 8)))
+        (size 0))
+    (setf size (read-sequence buffer ssl-stream))
+    (when (/= 1 size) (error "read auth resp error"))
+    (when (= #B00 (aref buffer 0)) (error "auth failure"))
+
+    (force-format t "local auth resp ~A~%" (aref buffer 0))
+    ;; 认证结束, 继续后续copy流程
+    ))
+
 
 
 #+TEST
@@ -79,4 +114,5 @@ port-bs: 用2字节表示长度
         (make-array 2 :initial-contents '(3 4))
         '()
         )
+
 

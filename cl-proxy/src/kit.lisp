@@ -24,22 +24,54 @@ return:
     n))
 
 
-(defun unumber->bits-array(unumber &key (bit-length 8))
+(defun unumber->bits-array(unumber &key (bit-length 8) (array-length -1))
   "将无符号整数转换成字节数组
 params:
-  bit-len: 每一个元素由<bit-len>位表示
+  bit-length: 每一个元素由<bit-len>位表示
+  array-length: 指定结果数组大小, 但不能低于正常结果集大小
 
 return
   array
 "
   (multiple-value-bind (n1 n2) (floor (+ 1 (truncate (log unumber 2))) bit-length)
-    (let* ((size (+ n1 (if (> n2 0) 1 0)))
-           (arr (make-array size :element-type `(unsigned-byte ,bit-length))))
-      (loop for idx from (1- size) downto 0
+    (let ((size (+ n1 (if (> n2 0) 1 0))))
+      (when (/= -1 array-length)
+        (if (< array-length size)
+            (error "array-length error, min length ~A but ~A~%" size array-length)
+            (setf size array-length)))
+      (let ((arr (make-array size :element-type `(unsigned-byte ,bit-length))))
+        (loop for idx from (1- size) downto 0
+              do
+                 (setf (aref arr idx)
+                       (ldb (byte bit-length (* bit-length (- (1- size) idx))) unumber)))
+        arr))))
+
+
+(defun io-copy-alpha (source target &key info)
+  ""
+  (force-format t "COPY BEGIN ~A~%" info)
+  (let ((buffer (make-array 512 :element-type (stream-element-type source))))
+    (loop for pos = (read-sequence buffer source)
+          while (plusp pos)
+          do
+             (force-format t "COPYING ~A ~A~%" info pos)
+             (progn
+               (write-sequence buffer target :end pos)
+               (force-output target))))
+  (force-format t "COPY END ~A~%" info)
+  nil)
+
+(defun io-byte-copy (source target)
+  "无缓冲, 按每个字节copy"
+  (handler-case
+      (loop for b = (read-byte source nil 'eof)
+            while (not (eq b 'eof))
             do
-               (setf (aref arr idx)
-                     (ldb (byte bit-length (* bit-length (- (1- size) idx))) unumber)))
-      arr)))
+               (progn
+                 (write-byte b target)
+                 (force-output target)))
+    (condition (c)
+      nil)))
 
 
 #+test
@@ -57,6 +89,10 @@ return
   i)
 
 #+TEST
-(let ((arr (unumber->bits-array 65535 :bit-length 1)))
+(ldb (byte 1 19) 6)
+
+#+TEST
+(let ((arr (unumber->bits-array 65535 :bit-length 1 :array-length 9)))
   (format t "ARR: ~A~%" arr)
   (format t "NUM: ~A~%" (bits-arr->unumber arr :bit-length 1)))
+
