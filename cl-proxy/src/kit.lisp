@@ -2,9 +2,14 @@
 
 
 (defun force-format (destination control-string &rest format-arguments)
-  "用于测试线程内日志输出"
+  "[废弃]用于测试线程内日志输出
+用log4cl日志库代替"
   (apply #'format destination control-string format-arguments)
   (finish-output nil))
+
+
+(defun make-thread-name (name)
+  (format nil "~A-~A-~A" name (get-internal-real-time) (random 128)))
 
 
 (defun bits-arr->unumber (arr &key (bit-length 8) (start 0) (end (length arr)))
@@ -46,20 +51,6 @@ return
                        (ldb (byte bit-length (* bit-length (- (1- size) idx))) unumber)))
         arr))))
 
-
-(defun io-copy-alpha (source target &key info)
-  ""
-  (force-format t "COPY BEGIN ~A~%" info)
-  (let ((buffer (make-array 512 :element-type (stream-element-type source))))
-    (loop for pos = (read-sequence buffer source)
-          while (plusp pos)
-          do
-             (force-format t "COPYING ~A ~A~%" info pos)
-             (progn
-               (write-sequence buffer target :end pos)
-               (force-output target))))
-  (force-format t "COPY END ~A~%" info)
-  nil)
 
 (defun io-byte-copy (source target)
   "无缓冲, 按每个字节copy"

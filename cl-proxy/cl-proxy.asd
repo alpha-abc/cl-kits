@@ -6,14 +6,16 @@
                "usocket-server"
                "flexi-streams"
                "cl+ssl"
-               "bordeaux-threads")
+               "bordeaux-threads"
+               "log4cl")
   :components ((:module "src"
+                :serial t
                 :components
                 ((:file "package")
-                 (:file "kit" :depends-on ("package"))
-                 (:file "socks5" :depends-on ("package"))
-                 (:file "local-server" :depends-on ("package"))
-                 (:file "proxy-server" :depends-on ("package"))
+                 (:file "kit")
+                 (:file "socks5")
+                 (:file "local-server")
+                 (:file "proxy-server")
                  )))
   :description ""
   :in-order-to ((test-op (test-op "cl-proxy/tests"))))

@@ -7,6 +7,11 @@
 
 (defun start-local-server (&optional (host #(0 0 0 0)) (port 1082))
   "启动[local]TCP服务"
+
+  ;;(log:config :daily "~/cl-local.log" :backup nil)
+  (log:config :sane2)
+  (log:info "start local server")
+  
   (multiple-value-bind (thread)
       (usocket:socket-server host port
                              'local-tcp-handler
@@ -55,17 +60,16 @@
                              :unwrap-stream-p t)))
             ;; 与代理服务器协商认证
             (local-auth ssl-stream uname-bs passwd-bs target-host-bs target-port-bs)
-
-            (force-format t "COPY TEST BEGIN ~%")
+            (log:info "socks5 username/password auth success")
 
             (let ((t1 (bt:make-thread
                        #'(lambda ()
                            (io-byte-copy stream ssl-stream))
-                       :name "LOCAL->PROXY"))
+                       :name (make-thread-name "LOCAL->PROXY")))
                   (t2 (bt:make-thread
                        #'(lambda ()
                            (io-byte-copy ssl-stream stream))
-                       :name "PROXY->LOCAL")))
+                       :name (make-thread-name "PROXY->LOCAL"))))
 
               (bt:join-thread t1)
               (bt:join-thread t2)))))
@@ -97,7 +101,7 @@ port-bs: 用2字节表示长度
     (when (/= 1 size) (error "read auth resp error"))
     (when (= #B00 (aref buffer 0)) (error "auth failure"))
 
-    (force-format t "local auth resp ~A~%" (aref buffer 0))
+    (log:info "认证结果[0/失败, 其他/成功] ~A" (aref buffer 0))
     ;; 认证结束, 继续后续copy流程
     ))
 

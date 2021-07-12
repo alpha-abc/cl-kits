@@ -6,6 +6,10 @@
 (defun start-proxy-server (&optional (host #(0 0 0 0)) (port 10020))
   "启动本地TCP服务"
 
+  ;;(log:config :daily "~/cl-proxy.log" :backup nil)
+  (log:config :sane2)
+  (log:info "start proxt server ~A" (get-internal-real-time))
+
   (multiple-value-bind (thread)
       (usocket:socket-server host
                              port
@@ -116,3 +120,5 @@ return
                               ssl-stream)
               (force-output ssl-stream)
               (error "auth failure")))))))
+
+
