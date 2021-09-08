@@ -10,6 +10,7 @@
    :json-pretty
    :base64-to-string
    :string-to-base64
+   :ipv4-info
    :test))
 
 
@@ -211,9 +212,171 @@ string-to-base64 '12'"
           (cl-base64:string-to-base64-string (nth 0 args))))
 
 
+(defun ipv4-info (&rest args)
+  "对提供ipv4地址以及cidr详细的解释
+
+useage:
+ipv4-info $ipv4 $cidr
+
+example:
+ipv4-info '128.14.35.7' '20'"
+
+  ;; 例子
+  ;; 10000000.00001110.00100011.00000111 ip地址
+  ;; 11111111.11111111.11110000.00000000 地址掩码
+  ;; 10000000.00001110.00100000.00000000 最小地址
+  ;; 10000000.00001110.00101111.11111111 最大地址
+
+  (when (/= 2 (length args)) (error "参数错误"))
+  
+  (let ((ipv4 (cl-ppcre:all-matches-as-strings
+               "(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])"
+               (nth 0 args)))
+        (cidr (parse-integer (nth 1 args))))
+
+    ;; 参数校验
+    (when (< (length ipv4) 4) (error "非法IP"))
+    (when (or (< cidr 0) (> cidr 32)) (error "cidr非法"))
+
+    (let* (
+           (n0-bits (unumber->bits-array (parse-integer (nth 0 ipv4)) :bit-length 1 :array-length 8))
+           (n1-bits (unumber->bits-array (parse-integer (nth 1 ipv4)) :bit-length 1 :array-length 8))
+           (n2-bits (unumber->bits-array (parse-integer (nth 2 ipv4)) :bit-length 1 :array-length 8))
+           (n3-bits (unumber->bits-array (parse-integer (nth 3 ipv4)) :bit-length 1 :array-length 8))
+
+           (mask-bits (create-mask cidr))
+           (r-mask-bits (create-mask cidr :reverse t)))
+      (format nil "IP(v4)总数
+~A
+
+IP(v4)地址
+~8,'0B.~8,'0B.~8,'0B.~8,'0B - ~A.~A.~A.~A
+
+地址掩码/子网掩码
+~8,'0B.~8,'0B.~8,'0B.~8,'0B - ~A.~A.~A.~A (~A)
+
+最小地址/网络地址
+~8,'0B.~8,'0B.~8,'0B.~8,'0B - ~A.~A.~A.~A
+
+最大地址/广播地址
+~8,'0B.~8,'0B.~8,'0B.~8,'0B - ~A.~A.~A.~A
+"
+              ;;
+              (expt 2 (- 32 cidr))
+              
+              ;;
+              (bits-arr->unumber n0-bits :bit-length 1)
+              (bits-arr->unumber n1-bits :bit-length 1)
+              (bits-arr->unumber n2-bits :bit-length 1)
+              (bits-arr->unumber n3-bits :bit-length 1)
+
+              (bits-arr->unumber n0-bits :bit-length 1)
+              (bits-arr->unumber n1-bits :bit-length 1)
+              (bits-arr->unumber n2-bits :bit-length 1)
+              (bits-arr->unumber n3-bits :bit-length 1)
+
+              ;;
+              (bits-arr->unumber (subseq mask-bits 0 8) :bit-length 1)
+              (bits-arr->unumber (subseq mask-bits 8 16) :bit-length 1)
+              (bits-arr->unumber (subseq mask-bits 16 24) :bit-length 1)
+              (bits-arr->unumber (subseq mask-bits 24 32) :bit-length 1)
+              
+              (bits-arr->unumber (subseq mask-bits 0 8) :bit-length 1)
+              (bits-arr->unumber (subseq mask-bits 8 16) :bit-length 1)
+              (bits-arr->unumber (subseq mask-bits 16 24) :bit-length 1)
+              (bits-arr->unumber (subseq mask-bits 24 32) :bit-length 1)
+
+              cidr
+
+              ;;
+              (bits-arr->unumber (bit-and n0-bits (subseq mask-bits 0 8)) :bit-length 1)
+              (bits-arr->unumber (bit-and n1-bits (subseq mask-bits 8 16)) :bit-length 1)
+              (bits-arr->unumber (bit-and n2-bits (subseq mask-bits 16 24)) :bit-length 1)
+              (bits-arr->unumber (bit-and n3-bits (subseq mask-bits 24 32)) :bit-length 1)
+
+              (bits-arr->unumber (bit-and n0-bits (subseq mask-bits 0 8)) :bit-length 1)
+              (bits-arr->unumber (bit-and n1-bits (subseq mask-bits 8 16)) :bit-length 1)
+              (bits-arr->unumber (bit-and n2-bits (subseq mask-bits 16 24)) :bit-length 1)
+              (bits-arr->unumber (bit-and n3-bits (subseq mask-bits 24 32)) :bit-length 1)
+
+              ;;
+              (bits-arr->unumber (bit-ior n0-bits (subseq r-mask-bits 0 8)) :bit-length 1)
+              (bits-arr->unumber (bit-ior n1-bits (subseq r-mask-bits 8 16)) :bit-length 1)
+              (bits-arr->unumber (bit-ior n2-bits (subseq r-mask-bits 16 24)) :bit-length 1)
+              (bits-arr->unumber (bit-ior n3-bits (subseq r-mask-bits 24 32)) :bit-length 1)
+
+              (bits-arr->unumber (bit-ior n0-bits (subseq r-mask-bits 0 8)) :bit-length 1)
+              (bits-arr->unumber (bit-ior n1-bits (subseq r-mask-bits 8 16)) :bit-length 1)
+              (bits-arr->unumber (bit-ior n2-bits (subseq r-mask-bits 16 24)) :bit-length 1)
+              (bits-arr->unumber (bit-ior n3-bits (subseq r-mask-bits 24 32)) :bit-length 1)))))
+
 
 (defun test (&rest args)
   (format nil "~a ~a~%" args (nth 3 args)))
+
+
+;;;; 工具区域
+
+(defun create-mask (net-len &key (reverse nil))
+  "创建地址掩码信息
+params:
+  net-len: 网络地址长度
+return:
+  地址掩码数组信息"
+  (let ((arr (make-array 32 :element-type '(unsigned-byte 1))))
+    (loop
+      for i from 0 to (1- (length arr))
+      do
+         (if reverse 
+             (when (>= i net-len) (setf (aref arr i) 1))
+             (when (< i net-len) (setf (aref arr i) 1))))
+    arr))
+
+(defun bits-arr->unumber (arr &key (bit-length 8) (start 0) (end (length arr)))
+  "将array转换成无符号整数(大端模式/big endian)
+params:
+  bit-len: 每一个元素由<bit-len>位表示
+  start: 左闭
+  end: 右开
+
+return:
+  无符号数字"
+  (let ((n 0))
+    (loop for byte-idx from (1- end) downto start
+          do
+             (setf (ldb (byte bit-length (* bit-length (- (1- end) byte-idx))) n)
+                   (aref arr byte-idx)))
+    n))
+
+
+(defun unumber->bits-array(unumber &key (bit-length 8) (array-length -1))
+  "将无符号整数转换成字节数组
+params:
+  bit-length: 每一个元素由<bit-len>位表示
+  array-length: 指定结果数组大小, 但不能低于正常结果集大小
+
+return
+  array
+"
+  (when (< unumber 0) (error "unumber 小于0"))
+  
+  (multiple-value-bind (n1 n2) (floor (+ 1 (truncate (if (> unumber 0) (log unumber 2) (log 0 0)))) bit-length)
+    (let ((size (+ n1 (if (> n2 0) 1 0))))
+      (when (/= -1 array-length)
+        (if (< array-length size)
+            (error "array-length error, min length ~A but ~A~%" size array-length)
+            (setf size array-length)))
+      (let ((arr (make-array size :element-type `(unsigned-byte ,bit-length))))
+        (loop for idx from (1- size) downto 0
+              do
+                 (setf (aref arr idx)
+                       (ldb (byte bit-length (* bit-length (- (1- size) idx))) unumber)))
+        arr))))
+
+
+;;;;
+
+;;;;
 
 ;;;; 运行脚本, 必须位于文件最后一行
 (format t "~A" (main (cdr sb-ext:*posix-argv*)))
@@ -229,3 +392,13 @@ string-to-base64 '12'"
 
 
 
+(cl-ppcre:all-matches-as-strings
+ "(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])"
+ "255.1.1.255"
+)
+
+  
+
+  (format nil "~B"
+(ldb (byte 32 0) (ash (ldb (byte 32 0) -1) (- 32 24)))
+)
